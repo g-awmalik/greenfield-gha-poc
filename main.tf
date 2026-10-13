@@ -167,16 +167,6 @@ resource "google_storage_bucket" "test_unsecured_bucket" {
   force_destroy = true
 }
 
-# =======
-# 6. Test for review
-# =======
-
-resource "google_storage_bucket" "test_unsecured_bucket" {
-  name          = "g4g-operate-demo-test-bucket"
-  location      = "US"
-  force_destroy = true
-}
-
 resource "google_storage_bucket_iam_member" "test_bucket_public" {
   bucket = google_storage_bucket.test_unsecured_bucket.name
   role   = "roles/storage.objectViewer"
