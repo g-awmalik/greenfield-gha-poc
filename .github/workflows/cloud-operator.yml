@@ -1,0 +1,37 @@
+name: Cloud Operator
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: >-
+    cloud-operator-${{ github.event.pull_request.number ||
+    github.event.issue.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  cloud-operator:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' &&
+      contains(github.event.comment.body, '/cloud-operator'))
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Cloud Operator
+        uses: g-awmalik/autocloud-operator/integrations/github/actions/iac-review@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CLOUD_OPERATOR_OAUTH_CONFIG: ${{ secrets.CLOUD_OPERATOR_OAUTH_CONFIG }}
