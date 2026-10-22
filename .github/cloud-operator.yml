@@ -1,0 +1,31 @@
+version: 1
+project_id: "g4g-operate-demo"
+agent_id: "operator-awmalik"
+
+scenarios:
+  # Scenario 1: PR Code & IaC Review
+  code_changes:
+    enabled: true
+    triggers:
+      - pull_request.opened
+      - pull_request.synchronize
+      - issue_comment.created
+    trigger_command: "/cloud-operator review"
+    # Options: "inline_comments" (default), "companion_pr", "comment_only"
+    pr_mode: "inline_comments"
+    allowed_author_associations:
+      - OWNER
+      - MEMBER
+      - COLLABORATOR
+    allow_fork_prs: false
+
+  # Scenario 2: Issue & Bug Implementation (WORK IN PROGRESS - Not available yet)
+  issue_implementation:
+    enabled: false
+    triggers:
+      - issues.labeled
+      - issue_comment.created
+    trigger_labels:
+      - "cloud-operator-implement"
+    trigger_command: "/cloud-operator implement"
+    base_branch: "main"
