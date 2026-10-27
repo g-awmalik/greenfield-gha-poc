@@ -3,6 +3,8 @@ name: Cloud Operator
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  issues:
+    types: [opened, labeled]
   issue_comment:
     types: [created]
 
@@ -22,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     if: >-
       github.event_name == 'pull_request' ||
+      github.event_name == 'issues' ||
       (github.event_name == 'issue_comment' &&
       contains(github.event.comment.body, '/cloud-operator'))
     steps:
