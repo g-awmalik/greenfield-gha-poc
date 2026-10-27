@@ -14,3 +14,8 @@ output "load_balancer_ip" {
   description = "The external IPv4 address assigned to the Global Load Balancer"
   value       = module.lb-http.external_ip
 }
+
+output "github_token_secret_id" {
+  description = "The Secret Manager secret ID used to inject the GITHUB_TOKEN environment variable into Cloud Run"
+  value       = google_secret_manager_secret.github_token.secret_id
+}
