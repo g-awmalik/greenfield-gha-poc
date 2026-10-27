@@ -19,13 +19,17 @@ scenarios:
       - COLLABORATOR
     allow_fork_prs: false
 
-  # Scenario 2: Issue & Bug Implementation (WORK IN PROGRESS - Not available yet)
+  # Scenario 2: Issue & Bug Implementation
   issue_implementation:
-    enabled: false
+    enabled: true
     triggers:
+      - issues.opened
       - issues.labeled
       - issue_comment.created
-    trigger_labels:
-      - "cloud-operator-implement"
+    trigger_labels: []
     trigger_command: "/cloud-operator implement"
     base_branch: "main"
+    allowed_author_associations:
+      - OWNER
+      - MEMBER
+      - COLLABORATOR
