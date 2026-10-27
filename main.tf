@@ -117,6 +117,7 @@ module "cloud_run" {
           SPANNER_PROJECT_ID  = var.project_id
           SPANNER_INSTANCE_ID = element(split("/", module.spanner.spanner_instance_id), length(split("/", module.spanner.spanner_instance_id)) - 1)
           SPANNER_DATABASE_ID = "app-database"
+          GITHUB_API_URL      = var.github_api_url
         },
         var.env_vars
       )

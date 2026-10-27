@@ -19,3 +19,8 @@ output "github_token_secret_id" {
   description = "The Secret Manager secret ID used to inject the GITHUB_TOKEN environment variable into Cloud Run"
   value       = google_secret_manager_secret.github_token.secret_id
 }
+
+output "cloud_run_service_account_email" {
+  description = "The email of the Cloud Run service account granted access to Spanner and Secret Manager"
+  value       = module.service_account.email
+}

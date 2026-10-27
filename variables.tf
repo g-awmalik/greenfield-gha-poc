@@ -22,6 +22,12 @@ variable "container_image" {
   default     = "us-docker.pkg.dev/cloudrun/container/hello:latest"
 }
 
+variable "github_api_url" {
+  description = "Base URL for GitHub API requests injected as GITHUB_API_URL into Cloud Run"
+  type        = string
+  default     = "https://api.github.com"
+}
+
 variable "github_token_secret_id" {
   description = "The Secret Manager secret ID storing the GitHub authentication token for Cloud Run"
   type        = string
