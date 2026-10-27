@@ -5,6 +5,10 @@ terraform {
       source  = "hashicorp/google"
       version = ">= 5.0.0, < 7.0.0"
     }
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = ">= 5.0.0, < 7.0.0"
+    }
     random = {
       source  = "hashicorp/random"
       version = ">= 3.5.0"
@@ -13,6 +17,10 @@ terraform {
 }
 
 provider "google" {
+  project = var.project_id
+}
+
+provider "google-beta" {
   project = var.project_id
 }
 
@@ -26,7 +34,27 @@ module "service_account" {
   project_id   = var.project_id
   names        = ["app-cloudrun-sa"]
   display_name = "Cloud Run App Service Account"
-  description  = "Identity for Cloud Run to access Spanner"
+  description  = "Identity for Cloud Run to access Spanner and Secret Manager"
+}
+
+# ==============================================================================
+# 1B. SECRET MANAGER FOR GITHUB AUTH TOKEN
+# ==============================================================================
+resource "google_secret_manager_secret" "github_token" {
+  project   = var.project_id
+  secret_id = var.github_token_secret_id
+
+  replication {
+    auto {}
+  }
+}
+
+# Grant secret-scoped least-privilege access to the Cloud Run Service Account
+resource "google_secret_manager_secret_iam_member" "github_token_accessor" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.github_token.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${module.service_account.email}"
 }
 
 # ==============================================================================
@@ -84,12 +112,29 @@ module "cloud_run" {
   containers = [
     {
       container_image = var.container_image
-      env_vars = {
-        SPANNER_PROJECT_ID  = var.project_id
-        SPANNER_INSTANCE_ID = element(split("/", module.spanner.spanner_instance_id), length(split("/", module.spanner.spanner_instance_id)) - 1)
-        SPANNER_DATABASE_ID = "app-database"
-      }
+      env_vars = merge(
+        {
+          SPANNER_PROJECT_ID  = var.project_id
+          SPANNER_INSTANCE_ID = element(split("/", module.spanner.spanner_instance_id), length(split("/", module.spanner.spanner_instance_id)) - 1)
+          SPANNER_DATABASE_ID = "app-database"
+          GITHUB_API_URL      = var.github_api_url
+        },
+        var.env_vars
+      )
+      env_secret_vars = merge(
+        {
+          GITHUB_TOKEN = {
+            secret  = google_secret_manager_secret.github_token.secret_id
+            version = var.github_token_secret_version
+          }
+        },
+        var.env_secret_vars
+      )
     }
+  ]
+
+  depends_on = [
+    google_secret_manager_secret_iam_member.github_token_accessor
   ]
 }
 

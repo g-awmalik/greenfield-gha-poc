@@ -21,3 +21,48 @@ variable "container_image" {
   type        = string
   default     = "us-docker.pkg.dev/cloudrun/container/hello:latest"
 }
+
+variable "github_api_url" {
+  description = "Base URL for GitHub API requests injected as GITHUB_API_URL into Cloud Run"
+  type        = string
+  default     = "https://api.github.com"
+}
+
+variable "github_token_secret_id" {
+  description = "The Secret Manager secret ID storing the GitHub authentication token for Cloud Run"
+  type        = string
+  default     = "github-auth-token"
+}
+
+variable "github_token_secret_version" {
+  description = "The version of the Secret Manager secret holding the GitHub authentication token"
+  type        = string
+  default     = "latest"
+}
+
+variable "env_vars" {
+  description = "Additional non-sensitive environment variables to pass to the Cloud Run container"
+  type        = map(string)
+  default     = {}
+}
+
+variable "env_secret_vars" {
+  description = "Additional Secret Manager environment variable references (map of env var name to { secret, version }) for the Cloud Run container"
+  type = map(object({
+    secret  = string
+    version = string
+  }))
+  default = {}
+}
+
+variable "enable_ssl" {
+  description = "Enable managed SSL certificates and HTTP-to-HTTPS redirect on the Global Load Balancer"
+  type        = bool
+  default     = true
+}
+
+variable "ssl_certificates_domains" {
+  description = "List of domains for the Load Balancer managed SSL certificate"
+  type        = list(string)
+  default     = ["app.example.com"]
+}
