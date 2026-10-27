@@ -1,7 +1,7 @@
 variable "project_id" {
   description = "The GCP Project ID"
   type        = string
-  default     = "mishrarishabh-sbd-1"
+  default     = "g4g-operate-demo"
 }
 
 variable "regions" {
@@ -19,5 +19,5 @@ variable "spanner_region" {
 variable "container_image" {
   description = "The container image to deploy to Cloud Run"
   type        = string
-  default     = "gcr.io/cloudrun/hello"
+  default     = "us-docker.pkg.dev/cloudrun/container/hello:latest"
 }

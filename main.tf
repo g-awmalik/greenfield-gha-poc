@@ -1,3 +1,17 @@
+terraform {
+  required_version = ">= 1.5.0"
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = ">= 5.0.0, < 7.0.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = ">= 3.5.0"
+    }
+  }
+}
+
 provider "google" {
   project = var.project_id
 }
@@ -30,11 +44,12 @@ module "spanner" {
   }
   database_config = {
     "app-database" = {
-      version_retention_period = "3d"
+      version_retention_period = "7d"
       ddl                      = []
-      deletion_protection      = false
+      deletion_protection      = true
       database_iam             = []
-      enable_backup            = false
+      enable_backup            = true
+      backup_retention         = "259200s" # 3 days
       create_db                = true
     }
   }
@@ -62,7 +77,7 @@ module "cloud_run" {
   service_name           = "app-service-${each.key}"
   create_service_account = false
   service_account        = module.service_account.email
-  ingress                = "INGRESS_TRAFFIC_ALL"
+  ingress                = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 
   members = ["allUsers"]
 
@@ -71,7 +86,7 @@ module "cloud_run" {
       container_image = var.container_image
       env_vars = {
         SPANNER_PROJECT_ID  = var.project_id
-        SPANNER_INSTANCE_ID = element(split("/", module.spanner.spanner_instance_id), 3)
+        SPANNER_INSTANCE_ID = element(split("/", module.spanner.spanner_instance_id), length(split("/", module.spanner.spanner_instance_id)) - 1)
         SPANNER_DATABASE_ID = "app-database"
       }
     }
@@ -101,10 +116,9 @@ module "lb-http" {
   project = var.project_id
   name    = "global-app-lb"
 
-  ssl                             = false
-  managed_ssl_certificate_domains = []
-  https_redirect                  = false
-
+  ssl                             = var.enable_ssl
+  managed_ssl_certificate_domains = var.ssl_certificates_domains
+  https_redirect                  = var.enable_ssl
   backends = {
     default = {
       description = "Serverless NEGs routing to multi-regional Cloud Run"
@@ -124,8 +138,8 @@ module "lb-http" {
         oauth2_client_secret = ""
       }
       log_config = {
-        enable      = false
-        sample_rate = null
+        enable      = true
+        sample_rate = 1.0
       }
     }
   }
@@ -138,10 +152,10 @@ module "lb-http" {
 module "log_export" {
   source                 = "terraform-google-modules/log-export/google"
   version                = "~> 11.0"
-  destination_uri        = "${module.destination.destination_uri}"
+  destination_uri        = module.destination.destination_uri
   filter                 = "severity >= ERROR"
-  log_sink_name          = "storage_example_logsink"
-  parent_resource_id     = "sample-project"
+  log_sink_name          = "bigquery_error_logsink"
+  parent_resource_id     = var.project_id
   parent_resource_type   = "project"
   unique_writer_identity = true
 }
@@ -162,23 +176,16 @@ module "destination" {
 }
 
 resource "google_storage_bucket" "test_unsecured_bucket" {
-  name          = "g4g-operate-demo-test-bucket"
-  location      = "US"
-  force_destroy = true
+  name                        = "${var.project_id}-app-storage-${random_string.suffix.result}"
+  location                    = "US"
+  project                     = var.project_id
+  force_destroy               = false
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+
+  versioning {
+    enabled = true
+  }
 }
 
-# =======
-# 6. Test for review
-# =======
-
-resource "google_storage_bucket" "test_unsecured_bucket" {
-  name          = "g4g-operate-demo-test-bucket"
-  location      = "US"
-  force_destroy = true
-}
-
-resource "google_storage_bucket_iam_member" "test_bucket_public" {
-  bucket = google_storage_bucket.test_unsecured_bucket.name
-  role   = "roles/storage.objectViewer"
-  member = "allUsers"
-}
+# Removed public IAM binding to allUsers to prevent unauthorized data exposure
