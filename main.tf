@@ -81,9 +81,20 @@ module "cloud_run" {
 
   members = ["allUsers"]
 
+  template_scaling = {
+    min_instance_count = var.cloud_run_min_instances
+    max_instance_count = var.cloud_run_max_instances
+  }
+
   containers = [
     {
       container_image = var.container_image
+      resources = {
+        limits = {
+          cpu    = var.cloud_run_cpu
+          memory = var.cloud_run_memory
+        }
+      }
       env_vars = {
         SPANNER_PROJECT_ID  = var.project_id
         SPANNER_INSTANCE_ID = element(split("/", module.spanner.spanner_instance_id), length(split("/", module.spanner.spanner_instance_id)) - 1)
