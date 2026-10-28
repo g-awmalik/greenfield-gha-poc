@@ -186,6 +186,31 @@ resource "google_storage_bucket" "test_unsecured_bucket" {
   versioning {
     enabled = true
   }
+
+  soft_delete_policy {
+    retention_duration_seconds = 1209600
+  }
+
+  lifecycle_rule {
+    action {
+      type          = "SetStorageClass"
+      storage_class = "NEARLINE"
+    }
+    condition {
+      age = 30
+    }
+  }
+
+  lifecycle_rule {
+    action {
+      type = "Delete"
+    }
+    condition {
+      with_state                 = "ARCHIVED"
+      days_since_noncurrent_time = 90
+      num_newer_versions         = 3
+    }
+  }
 }
 
 # Removed public IAM binding to allUsers to prevent unauthorized data exposure
