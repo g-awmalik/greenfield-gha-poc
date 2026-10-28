@@ -21,3 +21,15 @@ variable "container_image" {
   type        = string
   default     = "us-docker.pkg.dev/cloudrun/container/hello:latest"
 }
+
+variable "enable_ssl" {
+  description = "Set to true to enable SSL support and HTTPS redirect on the Global Load Balancer"
+  type        = bool
+  default     = false
+}
+
+variable "ssl_certificates_domains" {
+  description = "List of domain names for Google-managed SSL certificates when enable_ssl is true"
+  type        = list(string)
+  default     = []
+}
