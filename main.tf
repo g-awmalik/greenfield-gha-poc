@@ -33,7 +33,8 @@ module "service_account" {
 # 2. REGIONAL SPANNER INSTANCE
 # ==============================================================================
 module "spanner" {
-  source = "GoogleCloudPlatform/cloud-spanner/google"
+  source  = "GoogleCloudPlatform/cloud-spanner/google"
+  version = "~> 1.0"
 
   project_id            = var.project_id
   instance_name         = "regional-app-db"
@@ -68,7 +69,8 @@ resource "google_spanner_database_iam_member" "spanner_db_user" {
 # 3. MULTI-REGIONAL CLOUD RUN SERVICES (DIRECT PUBLIC ACCESS)
 # ==============================================================================
 module "cloud_run" {
-  source = "GoogleCloudPlatform/cloud-run/google//modules/v2"
+  source  = "GoogleCloudPlatform/cloud-run/google//modules/v2"
+  version = "~> 0.34"
 
   for_each = toset(var.regions)
 
