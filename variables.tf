@@ -21,3 +21,9 @@ variable "container_image" {
   type        = string
   default     = "us-docker.pkg.dev/cloudrun/container/hello:latest"
 }
+
+variable "ops_alert_email" {
+  description = "Email address for Cloud Monitoring alert notifications"
+  type        = string
+  default     = "ops-alerts@example.com"
+}
