@@ -14,3 +14,8 @@ output "load_balancer_ip" {
   description = "The external IPv4 address assigned to the Global Load Balancer"
   value       = module.lb-http.external_ip
 }
+
+output "artifact_registry_id" {
+  description = "The Artifact Registry repository identifier"
+  value       = module.artifact_registry.artifact_name
+}
