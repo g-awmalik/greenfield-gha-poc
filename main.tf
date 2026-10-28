@@ -189,3 +189,82 @@ resource "google_storage_bucket" "test_unsecured_bucket" {
 }
 
 # Removed public IAM binding to allUsers to prevent unauthorized data exposure
+
+# ==============================================================================
+# 6. CLOUD MONITORING NOTIFICATION CHANNEL & ALERT POLICIES
+# ==============================================================================
+
+resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
+  display_name = "Primary Alert Email Notification Channel"
+  type         = "email"
+  labels = {
+    email_address = var.alert_notification_email
+  }
+}
+
+resource "google_monitoring_alert_policy" "cloud_run_5xx_errors" {
+  project      = var.project_id
+  display_name = "Cloud Run 5xx Error Alert"
+  combiner     = "OR"
+  enabled      = true
+
+  conditions {
+    display_name = "Cloud Run 5xx Request Count Exceeds Threshold (5m)"
+    condition_threshold {
+      filter          = "resource.type = \"cloud_run_revision\" AND metric.type = \"run.googleapis.com/request_count\" AND metric.labels.response_code_class = \"5xx\""
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 5
+
+      aggregations {
+        alignment_period     = "300s"
+        per_series_aligner   = "ALIGN_SUM"
+        cross_series_reducer = "REDUCE_SUM"
+        group_by_fields      = ["resource.label.service_name", "resource.label.location"]
+      }
+    }
+  }
+
+  notification_channels = [
+    google_monitoring_notification_channel.email.id
+  ]
+
+  documentation {
+    content   = "Cloud Run revision is returning an elevated rate of HTTP 5xx server errors over a 5-minute window. Inspect Cloud Run revision logs and downstream Cloud Spanner health."
+    mime_type = "text/markdown"
+  }
+}
+
+resource "google_monitoring_alert_policy" "spanner_high_cpu" {
+  project      = var.project_id
+  display_name = "Spanner High CPU Alert"
+  combiner     = "OR"
+  enabled      = true
+
+  conditions {
+    display_name = "Spanner Instance CPU Utilization > 65% for 5m"
+    condition_threshold {
+      filter          = "resource.type = \"spanner_instance\" AND metric.type = \"spanner.googleapis.com/instance/cpu/utilization\""
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0.65
+
+      aggregations {
+        alignment_period     = "60s"
+        per_series_aligner   = "ALIGN_MEAN"
+        cross_series_reducer = "REDUCE_MEAN"
+        group_by_fields      = ["resource.label.instance_id"]
+      }
+    }
+  }
+
+  notification_channels = [
+    google_monitoring_notification_channel.email.id
+  ]
+
+  documentation {
+    content   = "Cloud Spanner instance CPU utilization has exceeded 65% (0.65) for 5 consecutive minutes. Check for hotspotting, unindexed queries, or increase node capacity to maintain regional SLA."
+    mime_type = "text/markdown"
+  }
+}

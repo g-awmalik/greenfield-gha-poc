@@ -21,3 +21,21 @@ variable "container_image" {
   type        = string
   default     = "us-docker.pkg.dev/cloudrun/container/hello:latest"
 }
+
+variable "enable_ssl" {
+  description = "Whether to enable SSL/HTTPS on the Global Load Balancer"
+  type        = bool
+  default     = false
+}
+
+variable "ssl_certificates_domains" {
+  description = "List of domain names for Google-managed SSL certificates"
+  type        = list(string)
+  default     = []
+}
+
+variable "alert_notification_email" {
+  description = "Email address for Cloud Monitoring alert notifications"
+  type        = string
+  default     = "ops-alerts@example.com"
+}
