@@ -14,3 +14,8 @@ output "load_balancer_ip" {
   description = "The external IPv4 address assigned to the Global Load Balancer"
   value       = module.lb-http.external_ip
 }
+
+output "redis_host" {
+  description = "The IP address of the Redis cache instance"
+  value       = google_redis_instance.app_cache.host
+}
