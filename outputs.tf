@@ -14,3 +14,8 @@ output "load_balancer_ip" {
   description = "The external IPv4 address assigned to the Global Load Balancer"
   value       = module.lb-http.external_ip
 }
+
+output "events_topic_name" {
+  description = "The Pub/Sub topic for application domain events"
+  value       = module.pubsub.topic
+}
