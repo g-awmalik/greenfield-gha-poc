@@ -65,7 +65,7 @@ resource "google_spanner_database_iam_member" "spanner_db_user" {
 }
 
 # ==============================================================================
-# 3. MULTI-REGIONAL CLOUD RUN SERVICES (DIRECT PUBLIC ACCESS)
+# 3. MULTI-REGIONAL CLOUD RUN SERVICES
 # ==============================================================================
 module "cloud_run" {
   source = "GoogleCloudPlatform/cloud-run/google//modules/v2"
@@ -79,7 +79,7 @@ module "cloud_run" {
   service_account        = module.service_account.email
   ingress                = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 
-  members = ["allUsers"]
+  members = var.cloud_run_invoker_members
 
   containers = [
     {

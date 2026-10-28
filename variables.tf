@@ -21,3 +21,9 @@ variable "container_image" {
   type        = string
   default     = "us-docker.pkg.dev/cloudrun/container/hello:latest"
 }
+
+variable "cloud_run_invoker_members" {
+  description = "List of IAM members granted roles/run.invoker on the Cloud Run services"
+  type        = list(string)
+  default     = []
+}
