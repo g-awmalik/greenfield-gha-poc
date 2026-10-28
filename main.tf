@@ -5,6 +5,10 @@ terraform {
       source  = "hashicorp/google"
       version = ">= 5.0.0, < 7.0.0"
     }
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = ">= 5.0.0, < 7.0.0"
+    }
     random = {
       source  = "hashicorp/random"
       version = ">= 3.5.0"
@@ -14,6 +18,71 @@ terraform {
 
 provider "google" {
   project = var.project_id
+}
+
+provider "google-beta" {
+  project = var.project_id
+}
+
+# ==============================================================================
+# 0. CLOUD KMS (CUSTOMER-MANAGED ENCRYPTION KEYS)
+# ==============================================================================
+resource "google_kms_key_ring" "spanner_keyring" {
+  name     = "spanner-keyring-${random_string.suffix.result}"
+  location = var.spanner_region
+  project  = var.project_id
+}
+
+resource "google_kms_crypto_key" "spanner_key" {
+  name            = "spanner-cmek-key"
+  key_ring        = google_kms_key_ring.spanner_keyring.id
+  rotation_period = "7776000s" # 90 days
+  purpose         = "ENCRYPT_DECRYPT"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "google_kms_key_ring" "storage_keyring" {
+  name     = "storage-keyring-${random_string.suffix.result}"
+  location = "us"
+  project  = var.project_id
+}
+
+resource "google_kms_crypto_key" "storage_key" {
+  name            = "storage-cmek-key"
+  key_ring        = google_kms_key_ring.storage_keyring.id
+  rotation_period = "7776000s" # 90 days
+  purpose         = "ENCRYPT_DECRYPT"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "google_project_service_identity" "spanner_sa" {
+  provider = google-beta
+  project  = var.project_id
+  service  = "spanner.googleapis.com"
+}
+
+resource "google_project_service_identity" "storage_sa" {
+  provider = google-beta
+  project  = var.project_id
+  service  = "storage.googleapis.com"
+}
+
+resource "google_kms_crypto_key_iam_member" "spanner_cmek_iam" {
+  crypto_key_id = google_kms_crypto_key.spanner_key.id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+  member        = "serviceAccount:${google_project_service_identity.spanner_sa.email}"
+}
+
+resource "google_kms_crypto_key_iam_member" "storage_cmek_iam" {
+  crypto_key_id = google_kms_crypto_key.storage_key.id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+  member        = "serviceAccount:${google_project_service_identity.storage_sa.email}"
 }
 
 # ==============================================================================
@@ -46,6 +115,7 @@ module "spanner" {
     "app-database" = {
       version_retention_period = "7d"
       ddl                      = []
+      kms_key_name             = google_kms_crypto_key.spanner_key.id
       deletion_protection      = true
       database_iam             = []
       enable_backup            = true
@@ -53,6 +123,10 @@ module "spanner" {
       create_db                = true
     }
   }
+
+  depends_on = [
+    google_kms_crypto_key_iam_member.spanner_cmek_iam
+  ]
 }
 
 # Grant the Cloud Run Service Account access to the Spanner Database
@@ -186,6 +260,14 @@ resource "google_storage_bucket" "test_unsecured_bucket" {
   versioning {
     enabled = true
   }
+
+  encryption {
+    default_kms_key_name = google_kms_crypto_key.storage_key.id
+  }
+
+  depends_on = [
+    google_kms_crypto_key_iam_member.storage_cmek_iam
+  ]
 }
 
 # Removed public IAM binding to allUsers to prevent unauthorized data exposure
