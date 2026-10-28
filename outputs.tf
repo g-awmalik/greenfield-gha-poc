@@ -14,3 +14,8 @@ output "load_balancer_ip" {
   description = "The external IPv4 address assigned to the Global Load Balancer"
   value       = module.lb-http.external_ip
 }
+
+output "kms_keyring_name" {
+  description = "The Cloud KMS keyring resource name"
+  value       = module.kms.keyring
+}
