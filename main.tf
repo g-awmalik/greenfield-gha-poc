@@ -88,6 +88,7 @@ module "cloud_run" {
         SPANNER_PROJECT_ID  = var.project_id
         SPANNER_INSTANCE_ID = element(split("/", module.spanner.spanner_instance_id), length(split("/", module.spanner.spanner_instance_id)) - 1)
         SPANNER_DATABASE_ID = "app-database"
+        TASKS_QUEUE_NAME    = google_cloud_tasks_queue.background_tasks.name
       }
     }
   ]
