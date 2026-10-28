@@ -128,7 +128,7 @@ module "lb-http" {
         }
       ]
       enable_cdn              = false
-      security_policy         = null
+      security_policy         = google_compute_security_policy.edge_waf.name
       custom_request_headers  = null
       custom_response_headers = null
 
