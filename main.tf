@@ -97,6 +97,81 @@ module "cloud_run" {
 # 4. GLOBAL LOAD BALANCER FRONTING CLOUD RUN
 # ==============================================================================
 
+# Cloud Armor WAF & Rate Limiting Security Policy
+resource "google_compute_security_policy" "waf_policy" {
+  name        = "global-app-lb-waf-policy"
+  project     = var.project_id
+  description = "Cloud Armor WAF security policy with rate limiting and OWASP SQLi/XSS protection"
+
+  adaptive_protection_config {
+    layer_7_ddos_defense_config {
+      enable          = true
+      rule_visibility = "STANDARD"
+    }
+  }
+
+  rule {
+    action   = "rate_based_ban"
+    priority = 500
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config {
+        src_ip_ranges = ["*"]
+      }
+    }
+    description = "Rate-based ban to mitigate IP request floods"
+
+    rate_limit_options {
+      conform_action   = "allow"
+      exceed_action    = "deny(429)"
+      enforce_on_key   = "IP"
+      ban_duration_sec = 600
+      rate_limit_threshold {
+        count        = 100
+        interval_sec = 60
+      }
+      ban_threshold {
+        count        = 300
+        interval_sec = 60
+      }
+    }
+  }
+
+  rule {
+    action   = "deny(403)"
+    priority = 1000
+    match {
+      expr {
+        expression = "evaluatePreconfiguredExpr('sqli-v33-stable')"
+      }
+    }
+    description = "Block SQL injection (SQLi) attacks using OWASP CRS v3.3"
+  }
+
+  rule {
+    action   = "deny(403)"
+    priority = 1001
+    match {
+      expr {
+        expression = "evaluatePreconfiguredExpr('xss-v33-stable')"
+      }
+    }
+    description = "Block cross-site scripting (XSS) attacks using OWASP CRS v3.3"
+  }
+
+  rule {
+    action   = "allow"
+    priority = 2147483647
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config {
+        src_ip_ranges = ["*"]
+      }
+    }
+    description = "Default allow rule"
+  }
+}
+
 # Serverless NEGs
 resource "google_compute_region_network_endpoint_group" "serverless_neg" {
   for_each              = toset(var.regions)
@@ -127,8 +202,20 @@ module "lb-http" {
           group = neg.id
         }
       ]
-      enable_cdn              = false
-      security_policy         = null
+      enable_cdn = var.enable_cdn
+      cdn_policy = {
+        cache_mode                   = "CACHE_ALL_STATIC"
+        default_ttl                  = 3600
+        client_ttl                   = 3600
+        max_ttl                      = 86400
+        signed_url_cache_max_age_sec = "3600"
+        cache_key_policy = {
+          include_host         = true
+          include_protocol     = true
+          include_query_string = true
+        }
+      }
+      security_policy         = google_compute_security_policy.waf_policy.name
       custom_request_headers  = null
       custom_response_headers = null
 
