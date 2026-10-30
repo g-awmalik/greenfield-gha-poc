@@ -77,7 +77,7 @@ module "cloud_run" {
   service_name           = "app-service-${each.key}"
   create_service_account = false
   service_account        = module.service_account.email
-  ingress                = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+  ingress                = "INGRESS_TRAFFIC_ALL"
 
   members = ["allUsers"]
 
@@ -116,9 +116,9 @@ module "lb-http" {
   project = var.project_id
   name    = "global-app-lb"
 
-  ssl                             = var.enable_ssl
-  managed_ssl_certificate_domains = var.ssl_certificates_domains
-  https_redirect                  = var.enable_ssl
+  ssl                             = false
+  managed_ssl_certificate_domains = []
+  https_redirect                  = false
   backends = {
     default = {
       description = "Serverless NEGs routing to multi-regional Cloud Run"
@@ -189,3 +189,16 @@ resource "google_storage_bucket" "test_unsecured_bucket" {
 }
 
 # Removed public IAM binding to allUsers to prevent unauthorized data exposure
+
+
+# ==============================================================================
+# 6. CUSTOMER UPLOADS STORAGE BUCKET
+# ==============================================================================
+resource "google_storage_bucket" "customer_uploads" {
+  name                        = "${var.project_id}-customer-uploads"
+  location                    = "US"
+  project                     = var.project_id
+  force_destroy               = true
+  uniform_bucket_level_access = false
+  public_access_prevention    = "inherited"
+}
