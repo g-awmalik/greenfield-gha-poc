@@ -5,6 +5,10 @@ terraform {
       source  = "hashicorp/google"
       version = ">= 5.0.0, < 7.0.0"
     }
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = ">= 5.0.0, < 7.0.0"
+    }
     random = {
       source  = "hashicorp/random"
       version = ">= 3.5.0"
@@ -13,6 +17,10 @@ terraform {
 }
 
 provider "google" {
+  project = var.project_id
+}
+
+provider "google-beta" {
   project = var.project_id
 }
 
@@ -65,7 +73,34 @@ resource "google_spanner_database_iam_member" "spanner_db_user" {
 }
 
 # ==============================================================================
-# 3. MULTI-REGIONAL CLOUD RUN SERVICES (DIRECT PUBLIC ACCESS)
+# 3. CUSTOM VPC NETWORK & REGIONAL SUBNETS
+# ==============================================================================
+resource "google_compute_network" "app_vpc" {
+  name                    = "app-vpc"
+  project                 = var.project_id
+  auto_create_subnetworks = false
+  routing_mode            = "GLOBAL"
+}
+
+resource "google_compute_subnetwork" "regional_subnet" {
+  for_each = toset(var.regions)
+
+  name                     = "app-subnet-${each.key}"
+  project                  = var.project_id
+  region                   = each.key
+  network                  = google_compute_network.app_vpc.id
+  ip_cidr_range            = cidrsubnet(var.vpc_cidr_block, 8, index(var.regions, each.key))
+  private_ip_google_access = true
+
+  log_config {
+    aggregation_interval = "INTERVAL_5_SEC"
+    flow_sampling        = 1.0
+    metadata             = "INCLUDE_ALL_METADATA"
+  }
+}
+
+# ==============================================================================
+# 4. MULTI-REGIONAL CLOUD RUN SERVICES (DIRECT VPC EGRESS)
 # ==============================================================================
 module "cloud_run" {
   source = "GoogleCloudPlatform/cloud-run/google//modules/v2"
@@ -78,6 +113,15 @@ module "cloud_run" {
   create_service_account = false
   service_account        = module.service_account.email
   ingress                = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+
+  vpc_access = {
+    egress = "ALL_TRAFFIC"
+    network_interfaces = {
+      network    = google_compute_network.app_vpc.name
+      subnetwork = google_compute_subnetwork.regional_subnet[each.key].name
+      tags       = ["cloud-run-service"]
+    }
+  }
 
   members = ["allUsers"]
 
@@ -94,7 +138,7 @@ module "cloud_run" {
 }
 
 # ==============================================================================
-# 4. GLOBAL LOAD BALANCER FRONTING CLOUD RUN
+# 5. GLOBAL LOAD BALANCER FRONTING CLOUD RUN
 # ==============================================================================
 
 # Serverless NEGs
@@ -146,7 +190,7 @@ module "lb-http" {
 }
 
 # ==============================================================================
-# 5. LOG EXPORT (SINK)
+# 6. LOG EXPORT (SINK)
 # ==============================================================================
 
 module "log_export" {
