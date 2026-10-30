@@ -34,7 +34,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run Cloud Operator
-        uses: GoogleCloudPlatform/gemini-cloud-assist-mcp/integrations/github/actions/iac-review@v1
+        uses: g-awmalik/autocloud-operator/integrations/github/actions/iac-review@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CLOUD_OPERATOR_OAUTH_CONFIG: ${{ secrets.CLOUD_OPERATOR_OAUTH_CONFIG }}
